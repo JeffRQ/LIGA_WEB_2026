@@ -21,7 +21,7 @@ const obtenerCanchas = async (req, res) => {
 
 const crearCancha = async (req, res) => {
   try {
-    const { nombre, tipo, estado } = req.body;
+    const { nombre, tipo, estado, precio } = req.body;
 
     if (!nombre || !tipo) {
       return res.status(400).json({
@@ -34,6 +34,7 @@ const crearCancha = async (req, res) => {
       nombre,
       tipo,
       estado: estado || "Disponible",
+      precio: precio || 0,
     });
 
     return res.status(201).json({
@@ -53,7 +54,7 @@ const crearCancha = async (req, res) => {
 const actualizarCancha = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, tipo, estado } = req.body;
+    const { nombre, tipo, estado, precio } = req.body;
 
     const cancha = await Field.findByPk(id);
 
@@ -68,6 +69,7 @@ const actualizarCancha = async (req, res) => {
       nombre: nombre ?? cancha.nombre,
       tipo: tipo ?? cancha.tipo,
       estado: estado ?? cancha.estado,
+      precio: precio ?? cancha.precio,
     });
 
     return res.json({

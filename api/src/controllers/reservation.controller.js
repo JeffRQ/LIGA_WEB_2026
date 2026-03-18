@@ -3,79 +3,33 @@ const User = require("../models/User");
 const Field = require("../models/Field");
 const { Op } = require("sequelize");
 
-const crearReserva = async (req, res) => {
-  try {
-    const { fecha, hora_inicio, hora_fin, user_id, field_id } = req.body;
-
-    if (!fecha || !hora_inicio || !hora_fin || !user_id || !field_id) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "Todos los campos son obligatorios",
-      });
-    }
-
-    if (hora_fin <= hora_inicio) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "La hora fin debe ser mayor a la hora inicio",
-      });
-    }
-
-    const conflicto = await Reservation.findOne({
-      where: {
-        fecha,
-        field_id,
-        [Op.and]: [
-          { hora_inicio: { [Op.lt]: hora_fin } },
-          { hora_fin: { [Op.gt]: hora_inicio } },
-        ],
-      },
-    });
-
-    if (conflicto) {
-      return res.status(409).json({
-        ok: false,
-        mensaje: "Ya existe una reserva en ese horario para esa cancha",
-      });
-    }
-
-    const nuevaReserva = await Reservation.create({
-      fecha,
-      hora_inicio,
-      hora_fin,
-      user_id,
-      field_id,
-      estado: "activa",
-    });
-
-    return res.status(201).json({
-      ok: true,
-      mensaje: "Reserva creada correctamente",
-      reserva: nuevaReserva,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      ok: false,
-      mensaje: "Error al crear la reserva",
-      error: error.message,
-    });
-  }
-};
-
 const obtenerReservas = async (req, res) => {
   try {
     const { fecha, field_id } = req.query;
 
     const where = {};
 
-    if (fecha) where.fecha = fecha;
-    if (field_id) where.field_id = field_id;
+    if (fecha) {
+      where.fecha = fecha;
+    }
+
+    if (field_id) {
+      where.field_id = field_id;
+    }
 
     const reservas = await Reservation.findAll({
       where,
       include: [
-        { model: User, attributes: ["id", "nombre", "email"] },
-        { model: Field, attributes: ["id", "nombre", "tipo", "estado"] },
+        {
+          model: User,
+          required: false,
+          attributes: ["nombre", "email"],
+        },
+        {
+          model: Field,
+          required: false,
+          attributes: ["nombre", "tipo"],
+        },
       ],
       order: [
         ["fecha", "ASC"],
@@ -88,9 +42,78 @@ const obtenerReservas = async (req, res) => {
       reservas,
     });
   } catch (error) {
+    console.error("ERROR EN obtenerReservas:", error);
     return res.status(500).json({
       ok: false,
-      mensaje: "Error al obtener las reservas",
+      mensaje: "Error al obtener reservas",
+      error: error.message,
+    });
+  }
+};
+
+const crearReserva = async (req, res) => {
+  try {
+    const { fecha, hora_inicio, hora_fin, field_id } = req.body;
+    const user_id = req.usuario.id;
+
+    if (!fecha || !hora_inicio || !hora_fin || !field_id) {
+      return res.status(400).json({
+        ok: false,
+        mensaje: "Todos los campos son obligatorios",
+      });
+    }
+
+    const conflicto = await Reservation.findOne({
+      where: {
+        fecha,
+        field_id,
+        [Op.or]: [
+          {
+            hora_inicio: {
+              [Op.between]: [hora_inicio, hora_fin],
+            },
+          },
+          {
+            hora_fin: {
+              [Op.between]: [hora_inicio, hora_fin],
+            },
+          },
+          {
+            [Op.and]: [
+              { hora_inicio: { [Op.lte]: hora_inicio } },
+              { hora_fin: { [Op.gte]: hora_fin } },
+            ],
+          },
+        ],
+      },
+    });
+
+    if (conflicto) {
+      return res.status(400).json({
+        ok: false,
+        mensaje: "Ya existe una reserva en ese horario para esa cancha",
+      });
+    }
+
+    const nuevaReserva = await Reservation.create({
+      fecha,
+      hora_inicio,
+      hora_fin,
+      estado: "pending",
+      user_id,
+      field_id,
+    });
+
+    return res.status(201).json({
+      ok: true,
+      mensaje: "Reserva creada correctamente",
+      reserva: nuevaReserva,
+    });
+  } catch (error) {
+    console.error("ERROR EN crearReserva:", error);
+    return res.status(500).json({
+      ok: false,
+      mensaje: "Error al crear la reserva",
       error: error.message,
     });
   }
@@ -110,42 +133,11 @@ const actualizarReserva = async (req, res) => {
       });
     }
 
-    const nuevaFecha = fecha ?? reserva.fecha;
-    const nuevaHoraInicio = hora_inicio ?? reserva.hora_inicio;
-    const nuevaHoraFin = hora_fin ?? reserva.hora_fin;
-    const nuevoFieldId = field_id ?? reserva.field_id;
-
-    if (nuevaHoraFin <= nuevaHoraInicio) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "La hora fin debe ser mayor a la hora inicio",
-      });
-    }
-
-    const conflicto = await Reservation.findOne({
-      where: {
-        id: { [Op.ne]: id },
-        fecha: nuevaFecha,
-        field_id: nuevoFieldId,
-        [Op.and]: [
-          { hora_inicio: { [Op.lt]: nuevaHoraFin } },
-          { hora_fin: { [Op.gt]: nuevaHoraInicio } },
-        ],
-      },
-    });
-
-    if (conflicto) {
-      return res.status(409).json({
-        ok: false,
-        mensaje: "Ya existe una reserva en ese horario para esa cancha",
-      });
-    }
-
     await reserva.update({
-      fecha: nuevaFecha,
-      hora_inicio: nuevaHoraInicio,
-      hora_fin: nuevaHoraFin,
-      field_id: nuevoFieldId,
+      fecha: fecha ?? reserva.fecha,
+      hora_inicio: hora_inicio ?? reserva.hora_inicio,
+      hora_fin: hora_fin ?? reserva.hora_fin,
+      field_id: field_id ?? reserva.field_id,
       estado: estado ?? reserva.estado,
     });
 
@@ -155,6 +147,7 @@ const actualizarReserva = async (req, res) => {
       reserva,
     });
   } catch (error) {
+    console.error("ERROR EN actualizarReserva:", error);
     return res.status(500).json({
       ok: false,
       mensaje: "Error al actualizar la reserva",
@@ -176,6 +169,18 @@ const eliminarReserva = async (req, res) => {
       });
     }
 
+    const usuarioLogueado = req.usuario;
+    const esAdministrador = usuarioLogueado.rol === "admin";
+    const esPropietario =
+      Number(reserva.user_id) === Number(usuarioLogueado.id);
+
+    if (!esAdministrador && !esPropietario) {
+      return res.status(403).json({
+        ok: false,
+        mensaje: "No tienes permiso para eliminar esta reserva",
+      });
+    }
+
     await reserva.destroy();
 
     return res.json({
@@ -183,6 +188,7 @@ const eliminarReserva = async (req, res) => {
       mensaje: "Reserva eliminada correctamente",
     });
   } catch (error) {
+    console.error("ERROR EN eliminarReserva:", error);
     return res.status(500).json({
       ok: false,
       mensaje: "Error al eliminar la reserva",
@@ -192,8 +198,8 @@ const eliminarReserva = async (req, res) => {
 };
 
 module.exports = {
-  crearReserva,
   obtenerReservas,
+  crearReserva,
   actualizarReserva,
   eliminarReserva,
 };

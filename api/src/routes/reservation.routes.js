@@ -1,13 +1,18 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const {
-  crearReserva,
   obtenerReservas,
-  eliminarReserva
-} = require('../controllers/reservation.controller');
+  crearReserva,
+  actualizarReserva,
+  eliminarReserva,
+} = require("../controllers/reservation.controller");
 
-router.get('/', obtenerReservas);
-router.post('/', crearReserva);
-router.delete('/:id', eliminarReserva);
+const validarJWT = require("../middlewares/validar-jwt");
+const esAdmin = require("../middlewares/es-admin");
+
+router.get("/", validarJWT, obtenerReservas);
+router.post("/", validarJWT, crearReserva);
+router.put("/:id", validarJWT, esAdmin, actualizarReserva);
+router.delete("/:id", validarJWT, eliminarReserva);
 
 module.exports = router;

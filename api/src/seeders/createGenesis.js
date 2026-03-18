@@ -13,7 +13,7 @@ async function createGenesis() {
       nombre: "Genesis Lorena Zambrano Toalongo",
       email: "genesis_lorena12@outlook.es",
       password: passwordHash,
-      rol: "STAFF",
+      rol: "admin",
     });
 
     console.log("Usuario Genesis creado correctamente");
@@ -21,7 +21,7 @@ async function createGenesis() {
     await existe.update({
       nombre: "Genesis Lorena Zambrano Toalongo",
       password: passwordHash,
-      rol: "STAFF",
+      rol: "admin",
     });
 
     console.log("Usuario Genesis actualizado correctamente");

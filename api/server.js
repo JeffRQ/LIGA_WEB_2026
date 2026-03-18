@@ -6,16 +6,15 @@ const PORT = process.env.PORT || 4000;
 
 async function startServer() {
   try {
-
     await sequelize.authenticate();
     console.log('Conexión a PostgreSQL correcta');
 
     require('./src/models/User');
     require('./src/models/Field');
     require('./src/models/Reservation');
-    
 
-    await sequelize.sync({ alter: true });
+    // Solo sincroniza sin alterar estructura existente
+    await sequelize.sync();
 
     console.log('Tablas sincronizadas');
 

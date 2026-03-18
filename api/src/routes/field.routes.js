@@ -7,9 +7,12 @@ const {
   eliminarCancha,
 } = require("../controllers/field.controller");
 
+const validarJWT = require("../middlewares/validar-jwt");
+const esAdmin = require("../middlewares/es-admin");
+
 router.get("/", obtenerCanchas);
-router.post("/", crearCancha);
-router.put("/:id", actualizarCancha);
-router.delete("/:id", eliminarCancha);
+router.post("/", validarJWT, esAdmin, crearCancha);
+router.put("/:id", validarJWT, esAdmin, actualizarCancha);
+router.delete("/:id", validarJWT, esAdmin, eliminarCancha);
 
 module.exports = router;
